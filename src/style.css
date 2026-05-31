@@ -24,6 +24,11 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   min-width: 320px;
   margin: 0;
@@ -38,6 +43,10 @@ p {
 
 button {
   font: inherit;
+}
+
+a {
+  color: inherit;
 }
 
 h1,
@@ -60,6 +69,8 @@ h2 {
 
 #app {
   min-height: 100svh;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .app-shell {
@@ -71,6 +82,8 @@ h2 {
 .top-bar,
 .map-card,
 .notes {
+  width: min(100%, calc(100vw - 20px));
+  max-width: 100%;
   border: 1px solid var(--border);
   border-radius: 18px;
   background: var(--panel);
@@ -88,6 +101,7 @@ h2 {
 .top-bar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 20px;
   min-height: 96px;
@@ -113,6 +127,7 @@ h2 {
 .progress-summary {
   display: grid;
   gap: 5px;
+  min-width: 0;
   width: min(360px, 42vw);
 }
 
@@ -136,11 +151,37 @@ h2 {
   cursor: pointer;
 }
 
-.unit-toggle:hover {
+.top-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  gap: 10px;
+  min-width: 0;
+}
+
+.club-link {
+  padding: 9px 12px;
+  border: 1px solid rgba(249, 115, 22, 0.42);
+  border-radius: 999px;
+  color: var(--text-strong);
+  background: rgba(249, 115, 22, 0.12);
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-decoration: none;
+  text-align: center;
+}
+
+.unit-toggle:hover,
+.club-link:hover {
   border-color: rgba(103, 232, 249, 0.72);
 }
 
-.unit-toggle:focus-visible {
+.club-link:hover {
+  border-color: rgba(249, 115, 22, 0.72);
+}
+
+.unit-toggle:focus-visible,
+.club-link:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
@@ -159,6 +200,7 @@ h2 {
 }
 
 .solar-map {
+  max-width: 100%;
   border: 1px solid var(--border);
   border-radius: 14px;
   background:
@@ -169,8 +211,10 @@ h2 {
 }
 
 .solar-map__scroller {
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .solar-map__canvas {
@@ -340,11 +384,47 @@ h2 {
 
 .notes {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 18px;
+  gap: 12px 18px;
   margin-top: 10px;
-  padding: 14px 18px;
+  padding: 12px 16px;
   font-size: 0.92rem;
+}
+
+.notes > p {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+.update-times {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 14px;
+  min-width: 0;
+}
+
+.update-times > span {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-width: 140px;
+  line-height: 1.15;
+}
+
+.update-times > span > span {
+  display: block;
+  min-width: 0;
+}
+
+.update-times strong {
+  font-size: 0.75rem;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 @media (max-width: 820px) {
@@ -362,8 +442,16 @@ h2 {
     width: 100%;
   }
 
-  .unit-toggle {
-    width: max-content;
+  .top-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .unit-toggle,
+  .club-link {
+    width: 100%;
+    max-width: 100%;
   }
 
   .map-card__header {
@@ -377,5 +465,12 @@ h2 {
 
   .notes {
     display: grid;
+  }
+
+  .update-times {
+    display: grid;
+    width: 100%;
+    gap: 8px;
+    justify-content: flex-start;
   }
 }

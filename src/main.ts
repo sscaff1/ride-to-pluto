@@ -1,4 +1,4 @@
-import './style.css'
+import { appTemplate } from './appTemplate'
 
 type SolarBody = {
   name: string
@@ -11,10 +11,11 @@ type SolarBody = {
 const KM_PER_AU = 149_597_870.7
 const KM_PER_MILE = 1.609344
 const MAP_TRACK_WIDTH_PX = 7_600
-const MAP_SIDE_PADDING_PX = 180
+const MAP_SIDE_PADDING_PX = 72
 const JUPITER_VISUAL_DIAMETER_PX = 46
 const SUN_VISUAL_DIAMETER_PX = 82
 const MIN_PLANET_VISUAL_DIAMETER_PX = 8
+const UPDATE_INTERVAL_MINUTES = 15
 
 const FALLBACK_BIKED_MILES = 1_250_000_000
 
@@ -37,6 +38,10 @@ const numberFormatter = new Intl.NumberFormat('en-US', {
 const percentFormatter = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
+})
+const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
 })
 type DistanceUnit = 'miles' | 'km'
 type ProgressSnapshot = {
@@ -96,15 +101,23 @@ function progressSnapshotToKm(snapshot: ProgressSnapshot | null) {
   return FALLBACK_BIKED_MILES * KM_PER_MILE
 }
 
-function formatUpdatedAt(value: string | undefined) {
+function formatTimestamp(value: Date | string | undefined) {
   if (!value) {
-    return 'Progress is using the fallback mileage until Strava data is generated.'
+    return 'Not available yet'
   }
 
-  return `Last Strava update: ${new Intl.DateTimeFormat('en-US', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))}`
+  return dateTimeFormatter.format(new Date(value))
+}
+
+function nextScheduledUpdate(from = new Date()) {
+  const next = new Date(from)
+  const minutes = next.getMinutes()
+  const minutesToAdd = UPDATE_INTERVAL_MINUTES - (minutes % UPDATE_INTERVAL_MINUTES)
+
+  next.setSeconds(0, 0)
+  next.setMinutes(minutes + minutesToAdd)
+
+  return next
 }
 
 function bodyMarkup(body: SolarBody, index: number) {
@@ -132,6 +145,21 @@ function bodyMarkup(body: SolarBody, index: number) {
 }
 
 const earthX = distanceFromSunToX(earthDistanceKm)
+
+function element<T extends HTMLElement>(selector: string) {
+  const match = document.querySelector<T>(selector)
+
+  if (!match) {
+    throw new Error(`Missing required element: ${selector}`)
+  }
+
+  return match
+}
+
+function setDistanceElement(target: HTMLElement, distanceKm: number) {
+  target.dataset.distanceKm = String(distanceKm)
+  target.textContent = formatDistance(distanceKm)
+}
 
 function updateDistanceLabels() {
   document.querySelectorAll<HTMLElement>('[data-distance-km]').forEach((element) => {
@@ -167,6 +195,8 @@ async function loadProgressSnapshot() {
 }
 
 function renderApp(progressSnapshot: ProgressSnapshot | null) {
+  element<HTMLDivElement>('#app').innerHTML = appTemplate
+
   const currentBikedKm = progressSnapshotToKm(progressSnapshot)
   const cappedBikedKm = Math.min(currentBikedKm, earthToPlutoKm)
   const progressFraction = cappedBikedKm / earthToPlutoKm
@@ -178,85 +208,52 @@ function renderApp(progressSnapshot: ProgressSnapshot | null) {
   const progressSource = progressSnapshot
     ? `${progressSnapshot.activityCount ?? 0} Strava club activities counted`
     : 'Fallback mileage'
+  const nextUpdate = nextScheduledUpdate()
 
-  document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <main class="app-shell">
-    <header class="top-bar">
-      <div>
-        <p class="eyebrow">Ride to Pluto</p>
-        <h1>Solar System progress map</h1>
-      </div>
-      <div class="progress-summary" aria-label="Ride progress summary">
-        <strong data-distance-km="${currentBikedKm}">${formatDistance(currentBikedKm)}</strong>
-        <span>${percentFormatter.format(progressPercent)}% complete</span>
-        <div class="progress-bar" aria-label="${percentFormatter.format(progressPercent)} percent complete">
-          <span style="transform: scaleX(${progressFraction});"></span>
-        </div>
-      </div>
-      <button id="unit-toggle" class="unit-toggle" type="button" aria-label="Switch distances to kilometers">
-        Show km
-      </button>
-    </header>
+  setDistanceElement(element('#current-distance'), currentBikedKm)
+  setDistanceElement(element('#bike-distance'), currentBikedKm)
+  setDistanceElement(element('#route-target'), earthToPlutoKm)
 
-    <section class="map-card" aria-labelledby="map-title">
-      <div class="map-card__header">
-        <div>
-          <h2 id="map-title">
-            Earth to Pluto:
-            ${
-              progressFraction >= 1
-                ? 'Destination reached'
-                : `<span data-distance-km="${remainingKm}">${formatDistance(remainingKm)}</span> left`
-            }
-          </h2>
-        </div>
-        <p>Scroll sideways to see the full line.</p>
-      </div>
+  const progressPercentText = `${percentFormatter.format(progressPercent)}% complete`
+  element('#progress-percent').textContent = progressPercentText
+  element('#progress-bar').setAttribute('aria-label', progressPercentText)
+  element('#progress-bar-fill').style.transform = `scaleX(${progressFraction})`
 
-      <div class="solar-map" role="img" aria-label="Linear map of the Solar System with biking progress from Earth toward Pluto">
-        <div class="solar-map__scroller">
-          <div class="solar-map__canvas" style="width: ${mapWidthPx}px;">
-            <div
-              class="solar-map__axis"
-              style="left: ${MAP_SIDE_PADDING_PX}px; width: ${MAP_TRACK_WIDTH_PX}px;"
-              aria-hidden="true"
-            ></div>
-            <div
-              class="earth-progress-line"
-              style="left: ${earthX}px; width: ${progressLineWidthPx}px;"
-              aria-hidden="true"
-            ></div>
-            ${solarBodies.map(bodyMarkup).join('')}
-            <article
-              class="bike-marker"
-              style="--x: ${progressX}px;"
-              aria-label="Bike progress marker, ${formatDistance(currentBikedKm)} from Earth toward Pluto"
-            >
-              <div class="bike-marker__label">
-                <strong>Bike group</strong>
-                <span><span data-distance-km="${currentBikedKm}">${formatDistance(currentBikedKm)}</span> from Earth</span>
-              </div>
-              <div class="bike-marker__pin" aria-hidden="true"></div>
-            </article>
-          </div>
-        </div>
-      </div>
-    </section>
+  const remainingDistance = element('#remaining-distance')
+  const remainingSuffix = element('#remaining-suffix')
+  if (progressFraction >= 1) {
+    remainingDistance.textContent = 'Destination reached'
+    delete remainingDistance.dataset.distanceKm
+    remainingSuffix.textContent = ''
+  } else {
+    setDistanceElement(remainingDistance, remainingKm)
+    remainingSuffix.textContent = ' left'
+  }
 
-    <section class="notes" aria-label="Scale notes">
-      <p>
-        Distances are average orbital distances from the Sun, scaled linearly from Sun to Pluto
-        (${numberFormatter.format(plutoDistanceKm)} km). Planet diameters are proportional to each
-        other, but small planets have a minimum visible size and the Sun is shown smaller than true
-        scale so the map remains usable.
-      </p>
-      <p>
-        Route target: <span data-distance-km="${earthToPlutoKm}">${formatDistance(earthToPlutoKm)}</span>
-        from Earth to Pluto. ${progressSource}. ${formatUpdatedAt(progressSnapshot?.lastUpdated)}
-      </p>
-    </section>
-  </main>
-`
+  const canvas = element('#solar-canvas')
+  canvas.style.width = `${mapWidthPx}px`
+
+  const axis = element('#solar-axis')
+  axis.style.left = `${MAP_SIDE_PADDING_PX}px`
+  axis.style.width = `${MAP_TRACK_WIDTH_PX}px`
+
+  const earthProgressLine = element('#earth-progress-line')
+  earthProgressLine.style.left = `${earthX}px`
+  earthProgressLine.style.width = `${progressLineWidthPx}px`
+
+  element('#solar-bodies').innerHTML = solarBodies.map(bodyMarkup).join('')
+
+  const bikeMarker = element('#bike-marker')
+  bikeMarker.style.setProperty('--x', `${progressX}px`)
+  bikeMarker.setAttribute(
+    'aria-label',
+    `Bike progress marker, ${formatDistance(currentBikedKm)} from Earth toward Pluto`,
+  )
+
+  element('#pluto-distance').textContent = `${numberFormatter.format(plutoDistanceKm)} km`
+  element('#progress-source').textContent = progressSource
+  element('#last-updated').textContent = formatTimestamp(progressSnapshot?.lastUpdated)
+  element('#next-update').textContent = formatTimestamp(nextUpdate)
 
   document.querySelector<HTMLButtonElement>('#unit-toggle')?.addEventListener('click', () => {
     distanceUnit = distanceUnit === 'miles' ? 'km' : 'miles'
