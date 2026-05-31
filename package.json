@@ -1,0 +1,22 @@
+{
+  "name": "bike-to-pluto",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "strava:auth-url": "node scripts/strava-auth-url.mjs",
+    "strava:exchange-code": "node scripts/strava-exchange-code.mjs",
+    "strava:update": "node scripts/update-strava-progress.mjs",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2",
+    "vite": "^8.0.12"
+  },
+  "dependencies": {
+    "d3": "^7.9.0",
+    "dotenv": "^17.4.2"
+  }
+}
