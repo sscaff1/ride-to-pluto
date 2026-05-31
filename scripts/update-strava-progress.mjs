@@ -52,6 +52,10 @@ async function readJson(path, fallback) {
       return fallback
     }
 
+    if (error instanceof SyntaxError) {
+      throw new SyntaxError(`Unable to parse JSON in ${path}: ${error.message}`)
+    }
+
     throw error
   }
 }
