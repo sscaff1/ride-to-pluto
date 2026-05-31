@@ -41,7 +41,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/progress.json data/strava-progress.json
+          git add public/progress.json data/strava-progress.json dist/progress.json
           if [ -f data/strava-token.enc ]; then
             git add data/strava-token.enc
           fi

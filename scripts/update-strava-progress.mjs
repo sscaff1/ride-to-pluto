@@ -1,6 +1,6 @@
 import 'dotenv/config'
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -19,6 +19,7 @@ const RIDE_TYPES = new Set([
 const ROOT_DIR = dirname(dirname(fileURLToPath(import.meta.url)))
 const LEDGER_PATH = join(ROOT_DIR, 'data', 'strava-progress.json')
 const PUBLIC_PROGRESS_PATH = join(ROOT_DIR, 'public', 'progress.json')
+const DIST_PROGRESS_PATH = join(ROOT_DIR, 'dist', 'progress.json')
 const TOKEN_CACHE_PATH = join(ROOT_DIR, 'data', 'strava-token.json')
 const ENCRYPTED_TOKEN_CACHE_PATH = join(ROOT_DIR, 'data', 'strava-token.enc')
 
@@ -66,6 +67,19 @@ async function writeJson(path, value) {
   await mkdir(dirname(path), { recursive: true })
   await writeFile(tmpPath, `${JSON.stringify(value, null, 2)}\n`)
   await rename(tmpPath, path)
+}
+
+async function pathExists(path) {
+  try {
+    await access(path)
+    return true
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return false
+    }
+
+    throw error
+  }
 }
 
 async function readTokenCache() {
@@ -266,6 +280,9 @@ const publicProgress = {
 
 await writeJson(LEDGER_PATH, progressState)
 await writeJson(PUBLIC_PROGRESS_PATH, publicProgress)
+if (await pathExists(DIST_PROGRESS_PATH)) {
+  await writeJson(DIST_PROGRESS_PATH, publicProgress)
+}
 
 console.log(
   `Added ${newActivityCount} new activities (${(newDistanceMeters / METERS_PER_MILE).toFixed(
