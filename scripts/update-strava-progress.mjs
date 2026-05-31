@@ -259,9 +259,11 @@ for (const activity of rideActivities) {
 }
 
 if (!foundPreviousCheckpoint) {
-  throw new Error(
-    'The previous lastActivityKey was not found in recent Strava club activities. Poll more often or reset data/strava-progress.json manually to avoid double-counting.',
+  console.warn(
+    'The previous lastActivityKey was not found in recent Strava club activities. Resyncing to the newest visible activity without adding distance to avoid double-counting.',
   )
+  newActivityCount = 0
+  newDistanceMeters = 0
 }
 
 progressState.clubId = CLUB_ID

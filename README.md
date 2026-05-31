@@ -14,7 +14,7 @@ The update script keeps compact local progress state in `data/strava-progress.js
 
 Strava club activities do not include a stable activity ID or exact start timestamp. To avoid saving every activity forever, the script stores only the running total, activity count, last update time, and a hashed `lastActivityKey`. When the endpoint does not provide an ID, that key is a SHA-256 hash of a fingerprint made from athlete name, activity name, sport type, distance, moving time, elapsed time, and elevation gain.
 
-On each run, the script adds activities until it reaches the previous `lastActivityKey`, then saves the newest activity key as the next checkpoint. If that checkpoint is no longer present in Strava's recent activity window, the script stops instead of guessing and risking double-counting.
+On each run, the script adds activities until it reaches the previous `lastActivityKey`, then saves the newest activity key as the next checkpoint. If that checkpoint is no longer present in Strava's recent activity window, the script resyncs to the newest visible activity without adding distance from that ambiguous batch, avoiding double-counting while allowing future runs to recover.
 
 The script uses `dotenv`, so local OAuth credentials can live in `.env`. Strava does not authenticate API requests with a permanent API key. Per Strava's docs, you authorize the app once, exchange the returned code for a refresh token, then use that refresh token to keep getting short-lived access tokens.
 
