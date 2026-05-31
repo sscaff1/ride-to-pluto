@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url'
 const CLUB_ID = process.env.STRAVA_CLUB_ID ?? '2149513'
 const PER_PAGE = 200
 const MAX_PAGES = 3
+const MAX_STRAVA_REQUEST_ATTEMPTS = 4
 const METERS_PER_MILE = 1609.344
+const STRAVA_USER_AGENT = 'bike-to-pluto/0.0.0'
 const RIDE_TYPES = new Set([
   'Ride',
   'VirtualRide',
@@ -25,6 +27,47 @@ const ENCRYPTED_TOKEN_CACHE_PATH = join(ROOT_DIR, 'data', 'strava-token.enc')
 
 function hashValue(value) {
   return createHash('sha256').update(value).digest('hex')
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
+
+function retryDelayMs(response, attempt) {
+  const retryAfterSeconds = Number(response.headers.get('retry-after'))
+
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return retryAfterSeconds * 1_000
+  }
+
+  return 5_000 * 3 ** (attempt - 1)
+}
+
+function shouldRetryStravaResponse(response) {
+  return response.status === 403 || response.status === 429 || response.status >= 500
+}
+
+async function fetchStrava(url, options, label) {
+  for (let attempt = 1; attempt <= MAX_STRAVA_REQUEST_ATTEMPTS; attempt += 1) {
+    const response = await fetch(url, options)
+
+    if (
+      response.ok ||
+      !shouldRetryStravaResponse(response) ||
+      attempt === MAX_STRAVA_REQUEST_ATTEMPTS
+    ) {
+      return response
+    }
+
+    const delayMs = retryDelayMs(response, attempt)
+    console.warn(
+      `${label} returned ${response.status}; retrying in ${Math.round(delayMs / 1_000)}s (${attempt}/${MAX_STRAVA_REQUEST_ATTEMPTS}).`,
+    )
+    await response.arrayBuffer()
+    await sleep(delayMs)
+  }
 }
 
 function encryptionKey() {
@@ -158,16 +201,19 @@ async function getAccessToken() {
     )
   }
 
-  const response = await fetch('https://www.strava.com/oauth/token', {
+  const response = await fetchStrava('https://www.strava.com/oauth/token', {
     method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      'user-agent': STRAVA_USER_AGENT,
+    },
     body: new URLSearchParams({
       client_id: STRAVA_CLIENT_ID,
       client_secret: STRAVA_CLIENT_SECRET,
       grant_type: 'refresh_token',
       refresh_token: refreshToken,
     }),
-  })
+  }, 'Strava token refresh')
 
   if (!response.ok) {
     throw new Error(`Unable to refresh Strava token: ${response.status} ${await response.text()}`)
@@ -186,9 +232,12 @@ async function fetchClubActivities(accessToken) {
     url.searchParams.set('page', String(page))
     url.searchParams.set('per_page', String(PER_PAGE))
 
-    const response = await fetch(url, {
-      headers: { authorization: `Bearer ${accessToken}` },
-    })
+    const response = await fetchStrava(url, {
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        'user-agent': STRAVA_USER_AGENT,
+      },
+    }, `Strava club activities page ${page}`)
 
     if (!response.ok) {
       throw new Error(`Unable to fetch club activities: ${response.status} ${await response.text()}`)
