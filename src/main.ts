@@ -183,7 +183,7 @@ function renderApp(progressSnapshot: ProgressSnapshot | null) {
   <main class="app-shell">
     <header class="top-bar">
       <div>
-        <p class="eyebrow">Bike to Pluto</p>
+        <p class="eyebrow">Ride to Pluto</p>
         <h1>Solar System progress map</h1>
       </div>
       <div class="progress-summary" aria-label="Ride progress summary">

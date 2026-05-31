@@ -1,4 +1,4 @@
-# Bike to Pluto
+# Ride to Pluto
 
 A vanilla TypeScript/Vite solar-system progress map for a biking group.
 
