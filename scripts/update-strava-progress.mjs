@@ -1,6 +1,6 @@
 import 'dotenv/config'
-import { METERS_PER_MILE, runUpdate } from '../lib/strava-core.ts'
-import { createFileStorage } from '../lib/storage-file.ts'
+import { runUpdate, METERS_PER_MILE } from '../lib/strava-core.mjs'
+import { createFileStorage } from '../lib/storage-file.mjs'
 
 const storage = createFileStorage(process.env)
 const { newActivityCount, newDistanceMeters, publicProgress } = await runUpdate({

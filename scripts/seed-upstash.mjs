@@ -1,6 +1,6 @@
 import 'dotenv/config'
-import { createFileStorage } from '../lib/storage-file.ts'
-import { createRedisStorage } from '../lib/storage-redis.ts'
+import { createFileStorage } from '../lib/storage-file.mjs'
+import { createRedisStorage } from '../lib/storage-redis.mjs'
 
 /**
  * One-time migration: copy the locally committed ledger / token / public
@@ -28,7 +28,7 @@ if (!ledger) {
 
 if (progress) {
   await redis.writeProgress(progress)
-  console.log(`Seeded public progress: ${progress.totalMiles.toFixed(2)} miles.`)
+  console.log(`Seeded public progress: ${progress.totalMiles?.toFixed?.(2) ?? '?'} miles.`)
 }
 
 if (token) {

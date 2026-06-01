@@ -10,15 +10,12 @@
     "dev": "vite",
     "strava:auth-url": "node scripts/strava-auth-url.mjs",
     "strava:exchange-code": "node scripts/strava-exchange-code.mjs",
-    "strava:update": "node scripts/update-strava-progress.ts",
-    "strava:seed-upstash": "node scripts/seed-upstash.ts",
-    "typecheck": "tsc -p tsconfig.server.json",
+    "strava:update": "node scripts/update-strava-progress.mjs",
+    "strava:seed-upstash": "node scripts/seed-upstash.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
-    "@vercel/node": "^5.8.8",
     "typescript": "~6.0.2",
     "vite": "^8.0.12"
   },

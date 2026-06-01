@@ -1,7 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createRedisStorage } from '../lib/storage-redis.ts'
+import { createRedisStorage } from '../lib/storage-redis.mjs'
 
-export default async function handler(_req: VercelRequest, res: VercelResponse): Promise<void> {
+export default async function handler(_req, res) {
   try {
     const storage = createRedisStorage()
     const progress = await storage.readProgress()
@@ -15,6 +14,6 @@ export default async function handler(_req: VercelRequest, res: VercelResponse):
     res.status(200).json(progress)
   } catch (error) {
     console.error('Failed to read progress:', error)
-    res.status(500).json({ error: (error as Error).message })
+    res.status(500).json({ error: error.message })
   }
 }

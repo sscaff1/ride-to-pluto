@@ -1,8 +1,7 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { METERS_PER_MILE, runUpdate } from '../../lib/strava-core.ts'
-import { createRedisStorage } from '../../lib/storage-redis.ts'
+import { runUpdate, METERS_PER_MILE } from '../../lib/strava-core.mjs'
+import { createRedisStorage } from '../../lib/storage-redis.mjs'
 
-function isAuthorized(req: VercelRequest): boolean {
+function isAuthorized(req) {
   const secret = process.env.CRON_SECRET
   if (!secret) {
     return false
@@ -12,7 +11,7 @@ function isAuthorized(req: VercelRequest): boolean {
   return header === `Bearer ${secret}`
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+export default async function handler(req, res) {
   if (!isAuthorized(req)) {
     res.status(401).json({ error: 'Unauthorized' })
     return
@@ -34,6 +33,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     })
   } catch (error) {
     console.error('Strava update failed:', error)
-    res.status(500).json({ ok: false, error: (error as Error).message })
+    res.status(500).json({ ok: false, error: error.message })
   }
 }

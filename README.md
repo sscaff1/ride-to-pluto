@@ -62,9 +62,9 @@ The app is deployed on Vercel. Because the Vercel **Hobby** plan caps native cro
 
 Data flow:
 
-- `api/cron/update-strava.ts`: serverless function that runs one Strava update. It reads/writes the ledger, the rotating OAuth token, and the public progress in Upstash. Protected by `CRON_SECRET`.
-- `api/progress.ts`: serverless function the frontend fetches at `/api/progress`. The app falls back to the static `public/progress.json` if the endpoint is unavailable.
-- Shared logic lives in `lib/strava-core.ts`; storage backends are `lib/storage-file.ts` (local CLI) and `lib/storage-redis.ts` (serverless). Run `npm run typecheck` to type-check the serverless/CLI code (`tsconfig.server.json`).
+- `api/cron/update-strava.mjs`: serverless function that runs one Strava update. It reads/writes the ledger, the rotating OAuth token, and the public progress in Upstash. Protected by `CRON_SECRET`.
+- `api/progress.mjs`: serverless function the frontend fetches at `/api/progress`. The app falls back to the static `public/progress.json` if the endpoint is unavailable.
+- Shared logic lives in `lib/strava-core.mjs`; storage backends are `lib/storage-file.mjs` (local CLI) and `lib/storage-redis.mjs` (serverless).
 
 ### Setup
 
