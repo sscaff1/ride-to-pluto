@@ -56,21 +56,42 @@ The refresh flow caches refreshed tokens in `data/strava-token.json` locally. Yo
 
 To keep the mileage fresh, run `npm run strava:update` on a schedule with cron or another scheduler.
 
-## GitHub Actions
+## Scheduled updates on Vercel (every 5 minutes)
 
-The repository includes `.github/workflows/update-strava-progress.yml`, which runs once per hour and can also be started manually from the Actions tab. It updates Strava mileage and commits these files when they change:
+The app is deployed on Vercel. Because the Vercel **Hobby** plan caps native cron jobs at once per day, the schedule is driven by an external scheduler that pings a serverless route. Serverless functions also have no persistent filesystem, so state lives in **Upstash Redis** instead of git-committed JSON files.
 
-- `public/progress.json`: public aggregate used by the app.
-- `data/strava-progress.json`: compact non-secret checkpoint with total distance and hashed last activity key.
-- `data/strava-token.enc`: encrypted OAuth token cache so Strava refresh-token rotation keeps working between GitHub Actions runs.
+Data flow:
 
-Add these repository secrets before enabling the workflow:
+- `api/cron/update-strava.ts`: serverless function that runs one Strava update. It reads/writes the ledger, the rotating OAuth token, and the public progress in Upstash. Protected by `CRON_SECRET`.
+- `api/progress.ts`: serverless function the frontend fetches at `/api/progress`. The app falls back to the static `public/progress.json` if the endpoint is unavailable.
+- Shared logic lives in `lib/strava-core.ts`; storage backends are `lib/storage-file.ts` (local CLI) and `lib/storage-redis.ts` (serverless). Run `npm run typecheck` to type-check the serverless/CLI code (`tsconfig.server.json`).
+
+### Setup
+
+1. Add the Upstash integration to the Vercel project (Storage → Upstash Redis). This injects `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+2. Add these Vercel environment variables:
 
 ```sh
 STRAVA_CLIENT_ID=...
 STRAVA_CLIENT_SECRET=...
-STRAVA_REFRESH_TOKEN=...
-STRAVA_TOKEN_CACHE_KEY=...
+STRAVA_REFRESH_TOKEN=...   # seeds the first token refresh
+CRON_SECRET=...            # long random string
 ```
 
-`STRAVA_REFRESH_TOKEN` seeds the first scheduled run. `STRAVA_TOKEN_CACHE_KEY` should be a long random value used to encrypt the token cache committed by the workflow.
+3. Seed Upstash with the current running total so it does not reset:
+
+```sh
+vercel env pull .env.vercel        # gets the Upstash REST credentials locally
+npm run strava:seed-upstash        # copies data/strava-progress.json into Redis
+```
+
+4. Point an external scheduler (e.g. [cron-job.org](https://cron-job.org), Cloudflare Worker Cron, or Upstash QStash) at the deployed route every 5 minutes:
+
+```
+POST https://<your-domain>/api/cron/update-strava
+Header: Authorization: Bearer <CRON_SECRET>
+```
+
+These free schedulers fire far more punctually than GitHub Actions' best-effort `schedule` trigger. If you upgrade to Vercel Pro, you can instead add a `vercel.json` `crons` entry with `"schedule": "*/5 * * * *"` and drop the external scheduler; the route already honors the `Authorization: Bearer <CRON_SECRET>` header Vercel sends.
+
+The local `npm run strava:update` command still works for manual/local runs and writes to `data/` and `public/` via the file storage backend.

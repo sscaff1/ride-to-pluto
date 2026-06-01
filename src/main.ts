@@ -180,15 +180,31 @@ function updateDistanceLabels() {
   }
 }
 
+async function fetchProgress(url: string) {
+  const response = await fetch(url, { cache: 'no-store' })
+
+  if (!response.ok) {
+    return null
+  }
+
+  return (await response.json()) as ProgressSnapshot
+}
+
 async function loadProgressSnapshot() {
+  // Prefer the live serverless endpoint (backed by Upstash, updated by the
+  // scheduled cron). Fall back to the static build-time file if it is missing
+  // (e.g. local `vite preview` without serverless functions).
   try {
-    const response = await fetch('/progress.json', { cache: 'no-store' })
-
-    if (!response.ok) {
-      return null
+    const live = await fetchProgress('/api/progress')
+    if (live) {
+      return live
     }
+  } catch {
+    // Ignore and fall back to the static snapshot below.
+  }
 
-    return (await response.json()) as ProgressSnapshot
+  try {
+    return await fetchProgress('/progress.json')
   } catch {
     return null
   }
